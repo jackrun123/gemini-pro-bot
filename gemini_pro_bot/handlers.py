@@ -4,15 +4,20 @@ from google.generativeai.types.generation_types import (
     StopCandidateException,
     BlockedPromptException,
 )
-from telegram import Update
+from telegram import Update, BotCommand
 from telegram.ext import (
-    ContextTypes,
+    ContextTypes, Application,
 )
 from telegram.error import NetworkError, BadRequest
 from telegram.constants import ChatAction, ParseMode
 from gemini_pro_bot.html_format import format_message
 import PIL.Image as load_image
 from io import BytesIO
+
+
+async def post_init(application: Application) -> None:
+    cmds = [BotCommand("/new", "新会话")]
+    await application.bot.setMyCommands(cmds)
 
 
 def new_chat(context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -23,7 +28,7 @@ async def start(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /start is issued."""
     user = update.effective_user
     await update.message.reply_html(
-        f"Hi {user.mention_html()}!\n\nStart sending messages with me to generate a response.\n\nSend /new to start a new chat session.",
+        f"Hi {user.mention_html()}!\n\n向我发送消息提问\n\n发送 /new 开启新会话",
         # reply_markup=ForceReply(selective=True),
     )
 
@@ -46,11 +51,11 @@ Send a message to the bot to generate a response.
 async def newchat_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Start a new chat session."""
     init_msg = await update.message.reply_text(
-        text="Starting new chat session...",
+        text="开启新会话...",
         reply_to_message_id=update.message.message_id,
     )
     new_chat(context)
-    await init_msg.edit_text("New chat session started.")
+    await init_msg.edit_text("已开启新会话")
 
 
 # Define the function that will handle incoming messages
@@ -65,7 +70,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         new_chat(context)
     text = update.message.text
     init_msg = await update.message.reply_text(
-        text="Generating...", reply_to_message_id=update.message.message_id
+        text="生成中...", reply_to_message_id=update.message.message_id
     )
     await update.message.chat.send_action(ChatAction.TYPING)
     # Generate a response using the text-generation pipeline
@@ -136,7 +141,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 async def handle_image(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle incoming images with captions and generate a response."""
     init_msg = await update.message.reply_text(
-        text="Generating...", reply_to_message_id=update.message.message_id
+        text="生成中...", reply_to_message_id=update.message.message_id
     )
     images = update.message.photo
     unique_images: dict = {}
